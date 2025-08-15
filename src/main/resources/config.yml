@@ -1,0 +1,5 @@
+weekly-reset:
+  enabled: true
+  day: SUNDAY         # Jours : MONDAY, TUESDAY, ...
+  hour: 18            # Heure en 24h (0-23)
+  minute: 0           # Optionnel, défaut à 0

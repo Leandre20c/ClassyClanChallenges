@@ -1,0 +1,13 @@
+clan-ranking-rewards: # Giving money to clan bank
+  1: 7500
+  2: 4000
+  3: 2000
+  default: 500
+
+player-ranking-rewards:
+  1:
+    - "crates give %player_name% leg 2"
+  2:
+    - "crates give %player_name% leg 1"
+  3:
+    - "crates give %player_name% epic 1"

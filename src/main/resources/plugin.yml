@@ -1,0 +1,22 @@
+name: ClassyClanChallenges
+main: org.classyClanChallenges.ClassyClanChallenges
+version: 1.0
+api-version: 1.20
+depend: [ClassyClan, WorldGuard]
+
+commands:
+  jdc:
+    description: Gère les défis de clan hebdomadaires
+    usage: /jdc
+    aliases: [ jeuxdeclan ]
+    permission: jdc.use
+    permission-message: §cTu n'as pas la permission d'utiliser cette commande.
+
+permissions:
+  jdc.use:
+    description: Utiliser les commandes de base (/jdc, /jdc stats, etc.)
+    default: true
+
+  jdc.admin:
+    description: Utiliser les commandes administrateur
+    default: op

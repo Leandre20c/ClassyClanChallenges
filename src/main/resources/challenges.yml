@@ -1,0 +1,69 @@
+﻿categories:
+  CRAFT:
+    ANVIL: 100
+    HAY_BLOCK: 20
+    BREAD: 5
+    DIAMOND_SWORD: 150
+    GOLDEN_APPLE: 120
+    ENCHANTING_TABLE: 200
+    BOOKSHELF: 30
+    BOW: 15
+    SHIELD: 20
+    TNT: 40
+    LADDER: 3
+
+  MINE:
+    STONE: 2
+    COBBLESTONE: 5
+    NETHERRACK: 1
+    RED_SAND: 8
+    REDSTONE_ORE: 20
+    BLACKSTONE: 25
+    GRAVEL: 15
+    TUFF: 7
+    END_STONE: 10
+    BLOCK_OF_AMETHYST: 40
+    COAL_ORE: 5
+    IRON_ORE: 10
+    GOLD_ORE: 20
+    DIAMOND_ORE: 100
+    EMERALD_ORE: 120
+    DEEPSLATE: 6
+    OBSIDIAN: 50
+
+  KILL:
+    ZOMBIE: 5
+    SKELETON: 5
+    CREEPER: 5
+    WITHER_SKELETON: 10
+    SLIME: 5
+    PIGLIN: 10
+    PILLAGER: 5
+    VILLAGER: 20
+    ZOGLIN: 100
+    SQUID: 30
+    SPIDER: 10
+    SALMON: 50
+    IRON_GOLEM: 100
+    WITCH: 50
+    ENDER_DRAGON: 500
+    BLAZE: 20
+    ENDERMAN: 25
+    SHULKER: 40
+    WARDEN: 1000
+
+  ENCHANT:
+    # Ce champ sera évalué dynamiquement, gardons la formule comme indicateur
+    enchant: level * 2.5
+
+  ACTION:
+    JUMP: 10
+    SWIM: 40
+    ELYTRA_FLY: 7
+    WALK: 15
+    RUN: 5
+    SNEAK: 3
+    RIDE_HORSE: 12
+    RIDE_BOAT: 10
+    TRADE: 15
+    SHOOT_BOW: 8
