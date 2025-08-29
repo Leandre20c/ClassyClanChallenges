@@ -4,7 +4,6 @@ import org.bukkit.Material;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockPlaceEvent;
-import org.bukkit.metadata.FixedMetadataValue;
 import org.classyClanChallenges.ClassyClanChallenges;
 import org.classyClanChallenges.challenges.ChallengeCategory;
 import org.classyClanChallenges.challenges.ChallengeEntry;
@@ -27,8 +26,8 @@ public class BlockPlaceListener implements Listener {
         if (target == null) return;
 
         if (event.getBlock().getType() == target) {
-            event.getBlock().setMetadata("placed_by_player",
-                    new FixedMetadataValue(ClassyClanChallenges.getInstance(), true));
+            // Utilise le nouveau gestionnaire au lieu des métadonnées
+            ClassyClanChallenges.getInstance().getBlockDataManager().addPlayerBlock(event.getBlock().getLocation());
         }
     }
 }

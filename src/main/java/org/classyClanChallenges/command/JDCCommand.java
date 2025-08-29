@@ -12,13 +12,25 @@ import java.util.List;
 public class JDCCommand implements CommandExecutor {
 
     private static final List<SubCommand> subCommands = List.of(
-            new StatsCommand(),
-            new MainCommand(),
-            new ClassementCommand(),
-            new RotateCommand(),
-            new ReloadCommand(),
-            new ResetPlayerCommand(),
-            new HelpCommand()
+            // Commandes pour tous
+            new MainCommand(),           // Commande par défaut (menu principal)
+            new StatsCommand(),          // Voir ses stats
+            new ClassementCommand(),     // Voir les classements
+            new HelpCommand(),          // Aide
+
+            // Commandes admin uniquement
+            new InfoCommand(),          // Informations système
+            new TopCommand(),           // Tops détaillés
+            new AddPointsCommand(),     // Ajouter des points
+            new SetPointsCommand(),     // Définir des points (NOUVEAU)
+            new SetChallengeCommand(),  // Forcer un défi
+            new BlocksCommand(),        // Gérer les blocs tracés
+            new DebugCommand(),         // Outils de debug
+            new ReloadCommand(),        // Recharger configs
+            new RotateCommand(),        // Changer de semaine
+            new ResetPlayerCommand(),   // Reset joueur
+            new ResetClanCommand(),     // Reset clan
+            new ResetAllCommand()       // Reset tout
     );
 
     @Override
@@ -45,7 +57,7 @@ public class JDCCommand implements CommandExecutor {
         for (SubCommand sub : subCommands) {
             if (sub.getName().equalsIgnoreCase(subLabel)) {
                 if (sub.isAdminOnly() && !sender.hasPermission("jdc.admin")) {
-                    sender.sendMessage("§cVous n’avez pas la permission d’utiliser cette commande.");
+                    sender.sendMessage("§cVous n'avez pas la permission d'utiliser cette commande.");
                     return true;
                 }
                 sub.execute(sender, Arrays.copyOfRange(args, 1, args.length));
@@ -61,5 +73,4 @@ public class JDCCommand implements CommandExecutor {
     public static List<SubCommand> getSubCommands() {
         return subCommands;
     }
-
 }

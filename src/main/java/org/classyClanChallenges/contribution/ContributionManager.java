@@ -49,6 +49,36 @@ public class ContributionManager {
         saveAll();
     }
 
+    /**
+     * Définit les points exacts d'un joueur dans une catégorie (NOUVEAU)
+     */
+    public void setPlayerPoints(UUID playerId, ChallengeCategory category, int newAmount) {
+        if (newAmount < 0) {
+            throw new IllegalArgumentException("Le montant ne peut pas être négatif");
+        }
+
+        // Récupérer l'ancienne valeur du joueur
+        PlayerContribution playerContrib = getPlayerContribution(playerId);
+        int oldPlayerAmount = playerContrib.get(category);
+        int playerDifference = newAmount - oldPlayerAmount;
+
+        // Définir la nouvelle valeur pour le joueur
+        playerContrib.set(category, newAmount);
+
+        // Mettre à jour le clan si applicable
+        Clan clan = getClanOf(playerId);
+        if (clan != null) {
+            UUID clanId = clan.getOwner();
+            ClanContribution clanContrib = getClanContribution(clanId);
+            int oldClanAmount = clanContrib.get(category);
+            int newClanAmount = Math.max(0, oldClanAmount + playerDifference);
+            clanContrib.set(category, newClanAmount);
+        }
+
+        recalculateTops();
+        saveAll();
+    }
+
     public void addGenericContribution(UUID playerId, ChallengeCategory category, String target, int count) {
         ChallengeEntry challenge = weeklyChallenge.getChallenge(category);
         if (challenge != null && challenge.getTarget().equalsIgnoreCase(target)) {
@@ -159,7 +189,6 @@ public class ContributionManager {
                 .sorted((a, b) -> Integer.compare(b.getValue(), a.getValue()))
                 .toList();
     }
-
 
     // ===================== SAUVEGARDE / CHARGEMENT =====================
 

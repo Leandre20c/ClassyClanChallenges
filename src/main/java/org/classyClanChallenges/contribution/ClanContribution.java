@@ -12,6 +12,16 @@ public class ClanContribution {
         progress.put(category, progress.getOrDefault(category, 0) + amount);
     }
 
+    /**
+     * Définit une valeur exacte pour une catégorie (nouveau)
+     */
+    public void set(ChallengeCategory category, int amount) {
+        if (amount < 0) {
+            throw new IllegalArgumentException("La valeur ne peut pas être négative");
+        }
+        progress.put(category, amount);
+    }
+
     public int get(ChallengeCategory category) {
         return progress.getOrDefault(category, 0);
     }
@@ -19,7 +29,6 @@ public class ClanContribution {
     public int getTotal() {
         return progress.values().stream().mapToInt(Integer::intValue).sum();
     }
-
 
     public Map<ChallengeCategory, Integer> getAll() {
         return progress;
@@ -33,4 +42,3 @@ public class ClanContribution {
         progress.clear();
     }
 }
-

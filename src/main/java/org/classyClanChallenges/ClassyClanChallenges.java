@@ -12,6 +12,7 @@ import org.classyClanChallenges.listener.*;
 import org.classyClanChallenges.placeholder.JDCPlaceholders;
 import org.classyClanChallenges.reward.RewardManager;
 import org.classyClanChallenges.scheduler.WeeklyResetTask;
+import org.classyClanChallenges.util.BlockDataManager;
 import org.classyclan.ClassyClan;
 
 public final class ClassyClanChallenges extends JavaPlugin {
@@ -21,6 +22,7 @@ public final class ClassyClanChallenges extends JavaPlugin {
     private ChallengeManager challengeManager;
     private ContributionManager contributionManager;
     private RewardManager rewardManager;
+    private BlockDataManager blockDataManager;
 
     public static ClassyClanChallenges getInstance() {
         return instance;
@@ -34,7 +36,13 @@ public final class ClassyClanChallenges extends JavaPlugin {
         return contributionManager;
     }
 
-    public RewardManager getRewardManager() {return rewardManager;}
+    public RewardManager getRewardManager() {
+        return rewardManager;
+    }
+
+    public BlockDataManager getBlockDataManager() {
+        return blockDataManager;
+    }
 
     @Override
     public void onEnable() {
@@ -48,8 +56,16 @@ public final class ClassyClanChallenges extends JavaPlugin {
             new JDCPlaceholders(this).register();
         }
 
-
         instance = this;
+
+        // Créer les dossiers nécessaires
+        if (!getDataFolder().exists()) {
+            getDataFolder().mkdirs();
+        }
+        java.io.File dataDir = new java.io.File(getDataFolder(), "data");
+        if (!dataDir.exists()) {
+            dataDir.mkdirs();
+        }
 
         // Init
         saveDefaultConfig();
@@ -57,9 +73,9 @@ public final class ClassyClanChallenges extends JavaPlugin {
         WeeklyChallenge weeklyChallenge = challengeManager.getActiveChallenges();
         contributionManager = new ContributionManager(weeklyChallenge, ClassyClan.getInstance().getClanManager());
         this.rewardManager = new RewardManager();
+        this.blockDataManager = new BlockDataManager(); // Nouveau gestionnaire
 
         Bukkit.getPluginManager().registerEvents(new ClassementCommand(), this);
-
 
         // Génération des défis hebdomadaires
         getChallengeManager().loadActiveChallengesFromFile();
@@ -80,13 +96,20 @@ public final class ClassyClanChallenges extends JavaPlugin {
 
         getCommand("jdc").setExecutor(new JDCCommand());
 
+        // Nettoyage initial des blocs invalides
+        Bukkit.getScheduler().runTaskLater(this, () -> {
+            blockDataManager.cleanupInvalidWorlds();
+        }, 100L); // 5 secondes après le démarrage
+
         getLogger().info("ClassyClanChallenges chargé avec succès !");
+        getLogger().info("Blocs tracés: " + blockDataManager.getStoredBlockCount());
     }
 
     @Override
     public void onDisable() {
         challengeManager.saveActiveChallenges();
         contributionManager.saveAll();
+        // Le BlockDataManager se sauvegarde automatiquement
         getLogger().info("ClassyClanChallenges désactivé.");
     }
 }

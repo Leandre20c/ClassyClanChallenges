@@ -15,6 +15,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
+import org.classyClanChallenges.ClassyClanChallenges;
 import org.classyClanChallenges.challenges.ChallengeCategory;
 import org.classyClanChallenges.challenges.ChallengeEntry;
 import org.classyClanChallenges.challenges.ChallengeManager;
@@ -35,8 +36,12 @@ public class MiningListener implements Listener {
         Player player = event.getPlayer();
         Block block = event.getBlock();
 
-        // Vérifie que le bloc n'a pas été placé par un joueur
-        if (block.hasMetadata("placed_by_player")) return;
+        // Vérifie si le bloc a été placé par un joueur (nouveau système)
+        if (ClassyClanChallenges.getInstance().getBlockDataManager().isPlayerPlaced(block.getLocation())) {
+            // Retire le bloc de la liste des blocs placés par les joueurs
+            ClassyClanChallenges.getInstance().getBlockDataManager().removePlayerBlock(block.getLocation());
+            return; // Ne donne pas de points pour les blocs placés par les joueurs
+        }
 
         ChallengeEntry challenge = challengeManager.getActiveChallenges().getChallenge(ChallengeCategory.MINE);
         if (challenge == null) return;

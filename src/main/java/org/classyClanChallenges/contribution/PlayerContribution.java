@@ -13,6 +13,30 @@ public class PlayerContribution {
         categoryMap.put(category, categoryMap.getOrDefault(category, 0) + amount);
     }
 
+    /**
+     * Définit une valeur exacte pour une catégorie (nouveau)
+     */
+    public void set(ChallengeCategory category, int amount) {
+        if (amount < 0) {
+            throw new IllegalArgumentException("La valeur ne peut pas être négative");
+        }
+        categoryMap.put(category, amount);
+    }
+
+    /**
+     * Remet à zéro une catégorie spécifique (nouveau)
+     */
+    public void reset(ChallengeCategory category) {
+        categoryMap.remove(category);
+    }
+
+    /**
+     * Remet à zéro toutes les catégories (nouveau)
+     */
+    public void resetAll() {
+        categoryMap.clear();
+    }
+
     public int get(ChallengeCategory category) {
         return categoryMap.getOrDefault(category, 0);
     }
@@ -28,5 +52,4 @@ public class PlayerContribution {
     public int getValue(ChallengeCategory category) {
         return this.categoryMap.getOrDefault(category, 0);
     }
-
 }
