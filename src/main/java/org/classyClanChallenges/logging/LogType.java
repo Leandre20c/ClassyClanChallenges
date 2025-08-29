@@ -1,9 +1,9 @@
-﻿package org.classyClanChallenges.logging;
+package org.classyClanChallenges.logging;
 
 /**
  * Types d'événements loggés
  */
-enum LogType {
+public enum LogType {
     POINT_GAIN("Gain de points"),
     POINT_MODIFICATION("Modification de points"),
     SYSTEM_EVENT("Événement système"),

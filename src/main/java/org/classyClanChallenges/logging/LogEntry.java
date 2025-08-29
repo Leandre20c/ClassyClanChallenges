@@ -1,4 +1,4 @@
-﻿package org.classyClanChallenges.logging;
+package org.classyClanChallenges.logging;
 
 import org.classyClanChallenges.challenges.ChallengeCategory;
 

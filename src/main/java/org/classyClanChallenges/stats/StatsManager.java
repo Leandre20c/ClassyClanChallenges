@@ -1,4 +1,4 @@
-﻿package org.classyClanChallenges.stats;
+package org.classyClanChallenges.stats;
 
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;

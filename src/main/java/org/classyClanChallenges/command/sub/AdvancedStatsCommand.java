@@ -1,4 +1,4 @@
-﻿package org.classyClanChallenges.command.sub;
+package org.classyClanChallenges.command.sub;
 
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
