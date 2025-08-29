@@ -12,7 +12,10 @@ import org.classyclan.clan.Clan;
 
 import java.io.File;
 import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class ChallengeManager {
 
@@ -173,105 +176,276 @@ public class ChallengeManager {
         Bukkit.broadcastMessage("§eFaites §a/jdc §epour découvrir les nouveaux objectifs !");
     }
 
+    /**
+     * Génère et sauvegarde un résumé Discord amélioré avec plus de détails
+     */
     private void saveDiscordSummary(ContributionManager manager) {
-        StringBuilder msg = new StringBuilder("# __Nouvelle semaine de jeux de clan__\n\n");
-        msg.append("## Résultats de la semaine précédente :\n\n");
+        StringBuilder msg = new StringBuilder();
 
-        Map<UUID, Integer> totalClanGains = new HashMap<>();
+        // En-tête avec date
+        LocalDateTime now = LocalDateTime.now();
+        DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy à HH:mm");
+
+        msg.append("# 🏆 **NOUVELLE SEMAINE DE JEUX DE CLAN** 🏆\n");
+        msg.append("*Mise à jour du ").append(now.format(dateFormatter)).append("*\n\n");
+        msg.append("───────────────────────────────────────\n\n");
+
+        // Résultats de la semaine précédente
+        msg.append("## 📊 **RÉSULTATS DE LA SEMAINE PRÉCÉDENTE**\n\n");
+
+        Map<UUID, Integer> totalClanGains = new HashMap<>(); // Pour tracker les gains totaux
+        Map<UUID, Map<String, Integer>> clanDetailedGains = new HashMap<>(); // Gains détaillés par clan
+
+        // Statistiques générales de la semaine
+        int totalPointsDistributed = 0;
+        int totalPlayersActive = 0;
+        int totalClansActive = 0;
 
         for (Map.Entry<ChallengeCategory, ChallengeEntry> entry : previous.getAllChallenges().entrySet()) {
             ChallengeCategory category = entry.getKey();
             ChallengeEntry challenge = entry.getValue();
             int unitValue = challenge.getValue();
 
-            String emoji = switch (category) {
-                case KILL -> ":sword:";
-                case MINE -> ":pickaxe:";
-                case CRAFT -> ":crafting_table:";
-                case ACTION -> ":person_running:";
-                default -> "•";
-            };
+            String emoji = getCategoryEmoji(category);
+            String categoryName = getCategoryDisplayName(category);
 
-            msg.append(" ").append(emoji).append(" **").append(category.name()).append("**\n");
+            msg.append("### ").append(emoji).append(" **").append(categoryName.toUpperCase()).append("**\n");
+            msg.append("*Objectif: ").append(challenge.getTarget()).append(" (Valeur: ").append(unitValue).append(" PE)*\n\n");
 
+            // TOP 10 CLANS pour cette catégorie
             List<Map.Entry<UUID, Integer>> topClans = manager.getTopClansByCategory(category);
             if (topClans == null || topClans.isEmpty()) {
-                msg.append("> Aucun clan n’a participé.\n");
+                msg.append("❌ Aucun clan n'a participé à cette catégorie.\n\n");
             } else {
-                for (int i = 0; i < Math.min(3, topClans.size()); i++) {
+                msg.append("**🏅 CLASSEMENT CLANS:**\n");
+
+                for (int i = 0; i < Math.min(10, topClans.size()); i++) {
                     UUID ownerId = topClans.get(i).getKey();
                     Clan clan = ClassyClan.getAPI().getClanOf(ownerId);
-                    String clanName = (clan != null) ? clan.getRawName() : "Inconnu";
+                    String clanName = (clan != null) ? clan.getRawName() : "Clan Inconnu";
                     int score = topClans.get(i).getValue();
-                    msg.append("> ").append(i + 1).append(" : ").append(clanName)
-                            .append(" -> ").append(score).append(" ").append(challenge.getTarget())
-                            .append(" ").append(category.name().toLowerCase()).append("s\n");
 
+                    String medal = getMedal(i + 1);
+                    String rank = String.format("%2d", i + 1);
+
+                    msg.append(medal).append(" **").append(rank).append(".** `").append(clanName)
+                            .append("` → **").append(score).append("** ").append(challenge.getTarget().toLowerCase())
+                            .append(" (").append(score * unitValue).append(" PE)\n");
+
+                    // Calcul des récompenses pour ce clan
                     int classementBonus = ClassyClanChallenges.getInstance().getRewardManager()
                             .getClanRankingBonus(i + 1);
-                    totalClanGains.put(ownerId, totalClanGains.getOrDefault(ownerId, 0) + classementBonus);
+                    int productionReward = score * unitValue;
+
+                    // Ajouter aux gains totaux
+                    totalClanGains.put(ownerId, totalClanGains.getOrDefault(ownerId, 0) + classementBonus + productionReward);
+
+                    // Détailler les gains
+                    clanDetailedGains.computeIfAbsent(ownerId, k -> new HashMap<>())
+                            .put(category.name() + "_classement", classementBonus);
+                    clanDetailedGains.computeIfAbsent(ownerId, k -> new HashMap<>())
+                            .put(category.name() + "_production", productionReward);
                 }
+
+                totalClansActive = Math.max(totalClansActive, topClans.size());
+                msg.append("\n");
             }
 
-            // Participations & valeurs
-            for (UUID clanId : manager.getAllClanContributions().keySet()) {
-                int amount = manager.getClanContribution(clanId).get(category);
-                if (amount <= 0) continue;
+            // TOP 5 JOUEURS pour cette catégorie
+            List<Map.Entry<UUID, Integer>> topPlayers = manager.getTopPlayersByCategory(category);
+            if (!topPlayers.isEmpty()) {
+                msg.append("**👑 TOP JOUEURS:**\n");
 
-                int value = amount * unitValue;
-                totalClanGains.put(clanId, totalClanGains.getOrDefault(clanId, 0) + value);
+                for (int i = 0; i < Math.min(5, topPlayers.size()); i++) {
+                    UUID playerId = topPlayers.get(i).getKey();
+                    OfflinePlayer player = Bukkit.getOfflinePlayer(playerId);
+                    String playerName = player.getName() != null ? player.getName() : "Joueur Inconnu";
+                    int score = topPlayers.get(i).getValue();
+
+                    String medal = getMedal(i + 1);
+
+                    // Trouver le clan du joueur
+                    Clan playerClan = ClassyClan.getAPI().getClanOf(playerId);
+                    String clanTag = playerClan != null ? " `[" + playerClan.getRawName() + "]`" : "";
+
+                    msg.append(medal).append(" **").append(playerName).append("**").append(clanTag)
+                            .append(" → **").append(score).append("** points\n");
+                }
+
+                totalPlayersActive = Math.max(totalPlayersActive, topPlayers.size());
+                msg.append("\n");
             }
 
-            // Bonus participation pour les non-tops
+            // Bonus de participation pour les clans non-classés
             for (UUID clanId : manager.getAllClanContributions().keySet()) {
-                boolean isTop = topClans.stream().anyMatch(e -> e.getKey().equals(clanId));
+                boolean isInTop = topClans.stream().anyMatch(e -> e.getKey().equals(clanId));
                 int amount = manager.getClanContribution(clanId).get(category);
-                if (amount > 0 && !isTop) {
+
+                if (amount > 0 && !isInTop) {
                     int participationBonus = ClassyClanChallenges.getInstance().getRewardManager()
-                            .getClanRankingBonus(0); // default
+                            .getClanRankingBonus(0); // bonus par défaut
                     totalClanGains.put(clanId, totalClanGains.getOrDefault(clanId, 0) + participationBonus);
+
+                    clanDetailedGains.computeIfAbsent(clanId, k -> new HashMap<>())
+                            .put(category.name() + "_participation", participationBonus);
                 }
             }
 
-            msg.append("\n");
+            // Calculer le total des points pour cette catégorie
+            int categoryTotal = topClans.stream().mapToInt(Map.Entry::getValue).sum();
+            totalPointsDistributed += categoryTotal;
         }
 
-        // Section défis de la semaine
-        msg.append("## Défis de cette semaine :\n\n");
+        // Résumé de la semaine
+        msg.append("## 📈 **RÉSUMÉ DE LA SEMAINE ÉCOULÉE**\n\n");
+        msg.append("🎯 **Points totaux générés:** ").append(String.format("%,d", totalPointsDistributed)).append("\n");
+        msg.append("👥 **Joueurs actifs:** ").append(totalPlayersActive).append("\n");
+        msg.append("🏰 **Clans participants:** ").append(totalClansActive).append("\n\n");
+
+        // Gains détaillés par clan
+        if (!totalClanGains.isEmpty()) {
+            msg.append("## 💰 **RÉCOMPENSES DISTRIBUÉES**\n\n");
+
+            List<Map.Entry<UUID, Integer>> sortedClans = totalClanGains.entrySet().stream()
+                    .sorted((a, b) -> Integer.compare(b.getValue(), a.getValue()))
+                    .collect(Collectors.toList());
+
+            for (int i = 0; i < sortedClans.size(); i++) {
+                Map.Entry<UUID, Integer> entry = sortedClans.get(i);
+                Clan clan = ClassyClan.getAPI().getClanOf(entry.getKey());
+                String name = (clan != null) ? clan.getRawName() : "Clan Inconnu";
+                int totalReward = entry.getValue();
+
+                String rankEmoji = i < 3 ? getMedal(i + 1) : "🏰";
+
+                msg.append(rankEmoji).append(" **").append(name).append("** → `")
+                        .append(String.format("%,d", totalReward)).append(" PE`\n");
+
+                // Détail des gains si disponible
+                Map<String, Integer> details = clanDetailedGains.get(entry.getKey());
+                if (details != null && details.size() > 1) {
+                    StringBuilder detailStr = new StringBuilder("   *Détail: ");
+                    details.entrySet().stream()
+                            .filter(d -> d.getValue() > 0)
+                            .forEach(d -> detailStr.append(d.getKey().replace("_", " ")).append(": ")
+                                    .append(d.getValue()).append(" PE, "));
+
+                    if (detailStr.length() > 12) {
+                        detailStr.setLength(detailStr.length() - 2); // Enlever la dernière virgule
+                        detailStr.append("*\n");
+                        msg.append(detailStr);
+                    }
+                }
+            }
+
+            int totalDistributed = totalClanGains.values().stream().mapToInt(Integer::intValue).sum();
+            msg.append("\n💎 **Total distribué:** `").append(String.format("%,d", totalDistributed)).append(" PE`\n\n");
+        }
+
+        msg.append("───────────────────────────────────────\n\n");
+
+        // Défis de la nouvelle semaine
+        msg.append("## 🎮 **DÉFIS DE CETTE SEMAINE**\n\n");
+        msg.append("*Nouveaux objectifs disponibles dès maintenant !*\n\n");
+
         for (Map.Entry<ChallengeCategory, ChallengeEntry> entry : active.getAllChallenges().entrySet()) {
-            String emoji = switch (entry.getKey()) {
-                case KILL -> ":sword:";
-                case MINE -> ":pickaxe:";
-                case CRAFT -> ":crafting_table:";
-                case ACTION -> ":person_running:";
-                default -> "•";
-            };
+            String emoji = getCategoryEmoji(entry.getKey());
+            String categoryName = getCategoryDisplayName(entry.getKey());
+            ChallengeEntry challenge = entry.getValue();
 
-            msg.append("• ").append(emoji).append(" **").append(entry.getKey().name())
-                    .append("** : (`").append(entry.getValue().getTarget()).append("`)\n");
+            msg.append("### ").append(emoji).append(" **").append(categoryName).append("**\n");
+            msg.append("🎯 Objectif: `").append(challenge.getTarget()).append("`\n");
+            msg.append("💰 Valeur: ").append(challenge.getValue()).append(" PE par unité\n\n");
         }
 
-        // Section gains par clan
-        msg.append("\n## Récompenses par clan :\n\n");
-        totalClanGains.entrySet().stream()
-                .sorted((a, b) -> Integer.compare(b.getValue(), a.getValue()))
-                .forEach(entry -> {
-                    Clan clan = ClassyClan.getAPI().getClanOf(entry.getKey());
-                    String name = (clan != null) ? clan.getRawName() : "Inconnu";
-                    msg.append("🏅 ").append(name).append(" : ").append(entry.getValue()).append(" PE\n");
-                });
+        // Guide rapide
+        msg.append("## ℹ️ **COMMENT PARTICIPER**\n\n");
+        msg.append("1. **Rejoignez un clan** avec `/clan join <nom>`\n");
+        msg.append("2. **Consultez les défis** avec `/jdc` en jeu\n");
+        msg.append("3. **Réalisez les objectifs** listés ci-dessus\n");
+        msg.append("4. **Gagnez des récompenses** individuelles et collectives !\n\n");
 
-        msg.append("\nBonne chance à tous ! ||@everyone||");
+        // Pied de page
+        msg.append("───────────────────────────────────────\n");
+        msg.append("*Bonne chance à tous pour cette nouvelle semaine !* 🍀\n\n");
+        msg.append("||@everyone||");
 
+        // Sauvegarde du message
         File file = new File(ClassyClanChallenges.getInstance().getDataFolder(), "bloc-note.yml");
         YamlConfiguration yaml = YamlConfiguration.loadConfiguration(file);
         yaml.set("weekly-message", msg.toString());
 
+        // Ajouter des statistiques additionnelles pour les admins
+        yaml.set("statistics.total_points_distributed", totalPointsDistributed);
+        yaml.set("statistics.active_players", totalPlayersActive);
+        yaml.set("statistics.participating_clans", totalClansActive);
+        yaml.set("statistics.reset_date", now.toString());
+
+        // Sauvegarder le top 3 de chaque catégorie pour référence
+        for (ChallengeCategory category : previous.getAllChallenges().keySet()) {
+            List<Map.Entry<UUID, Integer>> topClans = manager.getTopClansByCategory(category);
+            List<Map.Entry<UUID, Integer>> topPlayers = manager.getTopPlayersByCategory(category);
+
+            for (int i = 0; i < Math.min(3, topClans.size()); i++) {
+                UUID clanId = topClans.get(i).getKey();
+                Clan clan = ClassyClan.getAPI().getClanOf(clanId);
+                String clanName = clan != null ? clan.getRawName() : "Inconnu";
+                int score = topClans.get(i).getValue();
+
+                yaml.set("archives.clans." + category.name().toLowerCase() + "." + (i + 1) + ".name", clanName);
+                yaml.set("archives.clans." + category.name().toLowerCase() + "." + (i + 1) + ".score", score);
+                yaml.set("archives.clans." + category.name().toLowerCase() + "." + (i + 1) + ".uuid", clanId.toString());
+            }
+
+            for (int i = 0; i < Math.min(3, topPlayers.size()); i++) {
+                UUID playerId = topPlayers.get(i).getKey();
+                OfflinePlayer player = Bukkit.getOfflinePlayer(playerId);
+                String playerName = player.getName() != null ? player.getName() : "Inconnu";
+                int score = topPlayers.get(i).getValue();
+
+                yaml.set("archives.players." + category.name().toLowerCase() + "." + (i + 1) + ".name", playerName);
+                yaml.set("archives.players." + category.name().toLowerCase() + "." + (i + 1) + ".score", score);
+                yaml.set("archives.players." + category.name().toLowerCase() + "." + (i + 1) + ".uuid", playerId.toString());
+            }
+        }
+
         try {
             yaml.save(file);
         } catch (IOException e) {
-            Bukkit.getLogger().warning("[ClassyClanChallenges] Impossible de sauvegarder bloc-note.yml");
+            Bukkit.getLogger().warning("[ClassyClanChallenges] Impossible de sauvegarder bloc-note.yml: " + e.getMessage());
         }
+    }
+
+    // Méthodes utilitaires pour le formatage Discord
+    private String getCategoryEmoji(ChallengeCategory category) {
+        return switch (category) {
+            case KILL -> "⚔️";
+            case MINE -> "⛏️";
+            case CRAFT -> "🔨";
+            case ACTION -> "🏃";
+            default -> "📋";
+        };
+    }
+
+    private String getCategoryDisplayName(ChallengeCategory category) {
+        return switch (category) {
+            case KILL -> "Combat";
+            case MINE -> "Minage";
+            case CRAFT -> "Artisanat";
+            case ACTION -> "Actions";
+            default -> category.name();
+        };
+    }
+
+    private String getMedal(int rank) {
+        return switch (rank) {
+            case 1 -> "🥇";
+            case 2 -> "🥈";
+            case 3 -> "🥉";
+            case 4 -> "4️⃣";
+            case 5 -> "5️⃣";
+            default -> String.valueOf(rank) + ".";
+        };
     }
 
 

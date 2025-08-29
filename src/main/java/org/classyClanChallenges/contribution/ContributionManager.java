@@ -6,6 +6,7 @@ import org.classyClanChallenges.ClassyClanChallenges;
 import org.classyClanChallenges.challenges.ChallengeCategory;
 import org.classyClanChallenges.challenges.ChallengeEntry;
 import org.classyClanChallenges.challenges.WeeklyChallenge;
+import org.classyClanChallenges.logging.LogManager;
 import org.classyClanChallenges.util.HotbarPointBuffer;
 import org.classyclan.clan.Clan;
 import org.classyclan.clan.ClanManager;
@@ -25,14 +26,25 @@ public class ContributionManager {
     private final Map<ChallengeCategory, List<Map.Entry<UUID, Integer>>> topPlayersByCategory = new HashMap<>();
     private final Map<ChallengeCategory, List<Map.Entry<UUID, Integer>>> topClansByCategory = new HashMap<>();
 
+    // Référence au LogManager pour traçabilité
+    private LogManager logManager;
+
     public ContributionManager(WeeklyChallenge activeChallenges, ClanManager clanManager) {
         this.weeklyChallenge = activeChallenges;
         this.clanManager = clanManager;
     }
 
-    // ===================== AJOUTS =====================
+    public void setLogManager(LogManager logManager) {
+        this.logManager = logManager;
+    }
+
+    // ===================== AJOUTS AVEC LOGS =====================
 
     public void addContribution(UUID playerId, ChallengeCategory category, int amount) {
+        addContribution(playerId, category, amount, "Action en jeu", "Événement automatique");
+    }
+
+    public void addContribution(UUID playerId, ChallengeCategory category, int amount, String reason, String details) {
         if (amount <= 0) return;
 
         playerMap.computeIfAbsent(playerId, id -> new PlayerContribution()).add(category, amount);
@@ -45,22 +57,36 @@ public class ContributionManager {
 
         HotbarPointBuffer.addPoints(playerId, category, amount);
 
+        // LOG DÉTAILLÉ
+        if (logManager != null) {
+            String enrichedDetails = details;
+            if (clan != null) {
+                enrichedDetails += " | Clan: " + clan.getRawName();
+            }
+            logManager.logPointGain(playerId, category, amount, reason, enrichedDetails);
+        }
+
         recalculateTops();
         saveAll();
     }
 
     /**
-     * Définit les points exacts d'un joueur dans une catégorie (NOUVEAU)
+     * Définit les points exacts d'un joueur dans une catégorie avec logs admin
      */
-    public void setPlayerPoints(UUID playerId, ChallengeCategory category, int newAmount) {
+    public void setPlayerPoints(UUID playerId, ChallengeCategory category, int newAmount, String adminName) {
         if (newAmount < 0) {
             throw new IllegalArgumentException("Le montant ne peut pas être négatif");
         }
 
-        // Récupérer l'ancienne valeur du joueur
         PlayerContribution playerContrib = getPlayerContribution(playerId);
         int oldPlayerAmount = playerContrib.get(category);
         int playerDifference = newAmount - oldPlayerAmount;
+
+        // LOG AVANT MODIFICATION
+        if (logManager != null) {
+            logManager.logPointModification(playerId, category, oldPlayerAmount, newAmount,
+                    "Définition manuelle des points", adminName);
+        }
 
         // Définir la nouvelle valeur pour le joueur
         playerContrib.set(category, newAmount);
@@ -79,14 +105,23 @@ public class ContributionManager {
         saveAll();
     }
 
+    // Version de compatibilité sans admin name (pour l'ancien code)
+    public void setPlayerPoints(UUID playerId, ChallengeCategory category, int newAmount) {
+        setPlayerPoints(playerId, category, newAmount, "Système");
+    }
+
     public void addGenericContribution(UUID playerId, ChallengeCategory category, String target, int count) {
+        addGenericContribution(playerId, category, target, count, "Action spécifique", target);
+    }
+
+    public void addGenericContribution(UUID playerId, ChallengeCategory category, String target, int count, String reason, String details) {
         ChallengeEntry challenge = weeklyChallenge.getChallenge(category);
         if (challenge != null && challenge.getTarget().equalsIgnoreCase(target)) {
-            addContribution(playerId, category, count);
+            addContribution(playerId, category, count, reason, details);
         }
     }
 
-    // ===================== ACCÈS =====================
+    // ===================== ACCÈS (IDENTIQUE) =====================
 
     public PlayerContribution getPlayerContribution(UUID playerId) {
         return playerMap.computeIfAbsent(playerId, id -> new PlayerContribution());
@@ -121,25 +156,50 @@ public class ContributionManager {
         this.weeklyChallenge = newChallenge;
     }
 
-    // ===================== RESET =====================
+    // ===================== RESET AVEC LOGS =====================
 
-    public void resetPlayer(UUID playerId) {
+    public void resetPlayer(UUID playerId, String adminName) {
+        if (logManager != null) {
+            logManager.logSystemEvent("Reset joueur",
+                    "Joueur: " + playerId + " réinitialisé", adminName);
+        }
         playerMap.remove(playerId);
         saveAll();
     }
 
-    public void resetClan(UUID clanOwnerId) {
+    public void resetPlayer(UUID playerId) {
+        resetPlayer(playerId, "Système");
+    }
+
+    public void resetClan(UUID clanOwnerId, String adminName) {
+        if (logManager != null) {
+            logManager.logSystemEvent("Reset clan",
+                    "Clan: " + clanOwnerId + " réinitialisé", adminName);
+        }
         clanMap.remove(clanOwnerId);
         saveAll();
     }
 
-    public void resetAll() {
+    public void resetClan(UUID clanOwnerId) {
+        resetClan(clanOwnerId, "Système");
+    }
+
+    public void resetAll(String adminName) {
+        if (logManager != null) {
+            logManager.logSystemEvent("Reset complet",
+                    "Toutes les contributions réinitialisées. " +
+                            "Joueurs: " + playerMap.size() + ", Clans: " + clanMap.size(), adminName);
+        }
         playerMap.clear();
         clanMap.clear();
         saveAll();
     }
 
-    // ===================== TOPS =====================
+    public void resetAll() {
+        resetAll("Système");
+    }
+
+    // ===================== TOPS (IDENTIQUE) =====================
 
     public void recalculateTops() {
         // Global player
@@ -190,7 +250,7 @@ public class ContributionManager {
                 .toList();
     }
 
-    // ===================== SAUVEGARDE / CHARGEMENT =====================
+    // ===================== SAUVEGARDE / CHARGEMENT (IDENTIQUE) =====================
 
     public void saveAll() {
         File file = new File(ClassyClanChallenges.getInstance().getDataFolder(), "data/contributions.yml");
@@ -254,5 +314,11 @@ public class ContributionManager {
         }
 
         recalculateTops();
+
+        // LOG DU CHARGEMENT
+        if (logManager != null) {
+            logManager.logSystemEvent("Chargement des données",
+                    "Chargé " + playerMap.size() + " joueurs et " + clanMap.size() + " clans", null);
+        }
     }
 }
